@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vite App</title>
+  <script type="module" src="/main.js"></script>
+  <script type="module" src="/main-page.js"></script> 
+</head>
+
+<body id="container">
+  <div id="app"></div>
+  <div id="info">iPhone 13Pro</div>
+  <div id="camera" class="msg">
+    <div class="textHead">
+      *摄像头
+    </div>
+    <div>
+      1.主摄（7P）采用了f/1.5光圈，拥有1.9微米大小的像素尺寸，进光量提升了2.2倍；超广角镜头（6P）则为f/1.8，进光量提升了92%，支持自动对焦；长焦端升级为了77毫米，支持6倍光学变焦。<br/><br/>
+      2.支持微距拍摄，可以使对焦距离贴近2cm
+    </div>
+  </div>
+  <div id="side" class="msg">
+    <div class="textHead">
+    *侧边按键
+    </div>
+    <div>
+      苹果手机机身左右两侧一共四个按键，分别是电源键，静音键，上音量键，下音量键。
+    </div>
+  </div>
+  <div id="originalPosition" class="msg">
+    <div class="textHead">
+      *iPhone13Pro
+      </div>
+      <div>
+        1.设计方面:iphone13pro采用了全新的镜面处理技术，搭配精密的金属材质，让手机整体呈现出非常高贵、奢华的感觉；同时，它还采用了全新的超级视网膜XDR显示屏幕，在分辨率与亮度等方面都有大幅度的提升。<br/><br/>
+        2.摄影方面:iphone13pro也做出了很大的改进。它采用了和前代产品相同的三摄像头设计，但是在各个模块硬件参数上都得到了升级。三个镜头分别为：12MP超广角相机 + 12MP广角相机 + 12MP长焦相机，支持2倍光学变焦，还新增了夜景模式和时间膜摄录等功能。<br/><br/>
+        3.动力方面:iphone13pro搭载了全新的A15仿生晶片，这是目前苹果公司最先进的移动芯片之一。相比前代产品，A15仿生晶片性能提升了30%，功耗减少了8%；同时，它的图形处理器也得到了大幅度升级，性能提升了50%。
+      </div>
+  </div>
+  <input id="btn" type = "button" value = "摄像头"/>
+  <input id="btn2" type = "button" value = "侧边"/>
+  <input id="btn3" type = "button" value = "原位"/>
+  <script type="module">
+
+    import './style.css'
+    import './main-page.js'
+  
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+
+    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';//模型加载器
+    import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';//解压模型
+
+    import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'//模型自显示贴图，不需要光源
+
+    import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js'//GUI控制
+
+    import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js'//引入FontLoader库，该库能够将对应的字体Json文件加载到项目中使用
+    import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js'//TextGeometry文本缓冲几何体库
+    import { CSS3DRenderer, CSS3DObject} from 'three/examples/jsm/renderers/CSS3DRenderer.js'//CSS3DRenderer记载3D项目
+
+    import gsap from "gsap";//导入动画轨迹
+    import TWEEN from "@tweenjs/tween.js";
+  
+  
+    let scene, camare, model, plane, renderer;
+    let axesHelper,controls;
+    let dirLight, hemiLight;
+    let gui;
+
+    const camera = document.getElementById('camera');
+    const side = document.getElementById('side');
+    const originalPosition = document.getElementById('originalPosition');
+  
+    init();
+    initEnv();
+    initLight();
+    loadModel();
+    enableShaow();
+    enableDiv();
+    buildGUI();    
+    //初始化文本显示
+    function enableDiv(){
+      // camera.style.display = 'none';
+      // side.style.display = 'none';
+      originalPosition.style.display = 'block'    
+    }
+    function init() {
+        //1.创建场景及物体
+        scene = new THREE.Scene();
+        //scene.background = new THREE.Color(0xa0a0a0);
+        scene.background = new THREE.Color(0xc7c7c7);
+        scene.fog = new THREE.Fog(0xc7c7c7, 500, 1000);//600是半径，模型边缘雾化效果
+  
+        //1.1创建坐标
+        axesHelper = new THREE.AxesHelper(0);
+        scene.add(axesHelper)
+  
+  
+        //2.创建相机
+        camare = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 1000);
+        camare.position.set(0, 50, 300);
+        camare.lookAt(0, 0, 0);
+  
+        //3.创建渲染器
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        //renderer.outputEncoding = THREE.sRGBEncoding;
+        document.body.appendChild(renderer.domElement);
+  
+        //4.创建控制器
+        controls = new OrbitControls(camare, renderer.domElement)
+        //controls.addEventListener('change', render) 监听控制器变化，调用render;
+        controls.enableDamping = true; // 开启阻尼效果
+        controls.rotateSpeed = 0.5; // 旋转速度
+    }
+  
+    function initEnv(){
+      const pmremGenerator =new THREE.PMREMGenerator(renderer);
+      scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.002).texture;
+    }
+  
+    function initLight(){
+      //hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444);
+      hemiLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1);
+      scene.add(hemiLight);
+  
+      dirLight = new THREE.DirectionalLight(0xffffff);
+      dirLight.position.set(10, 100, -200);
+      dirLight.intensity = 0.3;
+      dirLight.shadow.camera.left = -50;
+      dirLight.shadow.camera.right = 50;
+      dirLight.shadow.camera.top = 50;
+      dirLight.shadow.camera.bottom = -50;
+      dirLight.shadow.camera.near = 1;
+      dirLight.shadow.camera.far = 1000;
+      dirLight.shadow.mapSize.width = 1024;
+      dirLight.shadow.mapSize.height = 1024;
+      scene.add(dirLight);
+      // const lightHelper1 = new THREE.DirectionalLightHelper(dirLight);//光源辅助线
+      // scene.add(lightHelper1)
+  
+      const dirLight2 = new THREE.DirectionalLight(0xffffff);
+      dirLight2.position.set(200, 50, 400);
+      dirLight2.intensity = 0.1;
+      //scene.add(dirLight2)
+    }
+  
+    function loadModel(){
+      /* 平面 */
+      const PlaneGeometry = new THREE.PlaneGeometry(12000, 12000);
+      const planeMaterial = new THREE.MeshPhongMaterial({
+        color: 0xe6e6e6, 
+        //opacity: 0.9, 
+        //transparent: true
+      });
+      plane = new THREE.Mesh(PlaneGeometry, planeMaterial);
+      plane.rotation.x = -Math.PI / 2;
+      plane.position.y = -85;
+      scene.add(plane)
+  
+      /* 模型加载 */
+      const loader = new GLTFLoader();
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath('jsm/libs/draco/gltf/');
+  
+      loader.setDRACOLoader(dracoLoader);
+      loader.load('models/gltf/iPhone13Pro.glb', (gltf) => {
+        
+        model = gltf.scene;
+        model.scale.set(10, 10, 10);
+        model.rotation.y = Math.PI;
+        //model.position.x = 3;
+        scene.add(model);
+        //打开模型阴影
+        model.traverse((obj) => {//遍历模型
+          if(obj.isMesh){
+              obj.castShadow = true;
+          }
+      })
+        model.position.x = 32;
+        render();
+  
+        const box = new THREE.Box3().setFromObject( model ) //获取模型几何数据 
+        const X = -(box.max.x - box.min.x) / 2;
+        console.log(box.max.x);
+        console.log(box.min.x);
+        //model.position.x = X 
+        //model.rotateY(X);
+        // let group = new THREE.Object3D();
+        // group.position.set(0, 0, 0); //世界原点坐标
+        // group.add(model);
+        // model.position.set(X, 0, 0);
+  
+      })
+  
+      /* 文字加载 */
+      const materials = [
+        new THREE.MeshPhongMaterial({color: 0xfafafa, flatShading: true}),
+        new THREE.MeshPhongMaterial({color: 0xd9d9d9})
+      ];
+      const loader2 = new FontLoader();
+      loader2.load('fonts/helvetiker_bold.typeface.json', (isFont) => {
+        const geometry = new TextGeometry(
+          'camare',
+                {
+                    font: isFont,
+                    size: 4,
+                    height: 0.1,
+                    curveSegments: 30,
+                    bevelThickness: 0.6,
+                    bevelSize: 0,
+                    bevelEnabled: true
+                }
+        );
+        geometry.computeBoundingBox();
+        const xoffet = geometry.boundingBox.max.x - geometry.boundingBox.min.x;//X轴方向偏移量，整个字符长度
+        const xoffetLen = xoffet / 2;//中心点
+        const textMesh1 = new THREE.Mesh(geometry, materials);
+        textMesh1.position.set(-xoffetLen + 40, 60, -20);
+        textMesh1.rotation.y = Math.PI
+        scene.add(textMesh1);
+  
+        const geometry2 = new TextGeometry(
+          'log',
+                {
+                    font: isFont,
+                    size: 4,
+                    height: 0.1,
+                    curveSegments: 30,
+                    bevelThickness: 0.6,
+                    bevelSize: 0,
+                    bevelEnabled: true
+                }
+        );
+        const textMesh2 = new THREE.Mesh(geometry2, materials);
+        textMesh2.position.set(0, 0, -20);
+        textMesh2.rotation.y = Math.PI
+        scene.add(textMesh2);
+  
+        const geometry3 = new TextGeometry(
+          'botton',
+                {
+                    font: isFont,
+                    size: 4,
+                    height: 0.1,
+                    curveSegments: 30,
+                    bevelThickness: 0.6,
+                    bevelSize: 0,
+                    bevelEnabled: true
+                }
+        );
+        const textMesh3 = new THREE.Mesh(geometry3, materials);
+        textMesh3.position.set(40, 0, 0);
+        textMesh3.rotation.y = Math.PI / 2;
+        scene.add(textMesh3);
+  
+        const geometry4 = new TextGeometry(
+          'screen',
+                {
+                    font: isFont,
+                    size: 4,
+                    height: 0.1,
+                    curveSegments: 30,
+                    bevelThickness: 0.6,
+                    bevelSize: 0,
+                    bevelEnabled: true
+                }
+        );
+        const textMesh4 = new THREE.Mesh(geometry4, materials);
+        textMesh4.position.set(-30, 40, 3);
+        //textMesh4.rotation.y = Math.PI / 2;
+        scene.add(textMesh4);
+  
+      })
+        
+    }
+  
+    function enableShaow(){
+      //dirLight.castShadow = true;
+      renderer.shadowMap.enabled = true;//渲染器渲染阴影
+      plane.receiveShadow = true;
+
+      //阴影辅助线
+      // const shadowCameraHelper = new THREE.CameraHelper(
+      //   //dirLight.shadow.camera
+      // )
+      //scene.add(shadowCameraHelper)
+    }
+  
+    function buildGUI(){
+      gui = new GUI();
+      const camareFolder = gui.addFolder('Camare');
+      camareFolder.add(camare.position, 'z', -900, 900)
+      .step(0.1)
+      .onChange((val) => {
+        camare.position.z = val;
+      })
+  
+      const hemiLightFolder = gui.addFolder('hemiLight');//添加文件夹，文件名
+      hemiLightFolder.addColor(hemiLight, 'color')//添加spotLight光源对象的color属性
+            .onChange((val) => {
+              hemiLight.color.set(val);//监听点击GUI改变时，将颜色值赋值给光源
+            });
+  
+    }
+  
+    function render() {
+        renderer.render(scene, camare);
+        requestAnimationFrame(render);
+        controls.update();
+        TWEEN.update();
+        //model.rotation.y += 0.01;
+    }
+  
+    //监听画面尺寸变化，更新渲染画面
+    window.addEventListener("resize", () => {
+        camare.aspect = window.innerWidth / window.innerHeight;//更新摄像头
+        camare.updateProjectionMatrix();//更新摄像头的投影矩阵
+        renderer.setSize(window.innerWidth, window.innerHeight);//更新渲染器
+        renderer.setPixelRatio(window.devicePixelRatio);//设置渲染器的像素比
+    })
+  
+    
+    /* 按钮操作 */
+    
+    //摄像头
+    var btn = document.getElementById("btn");  
+    btn.onclick =function(){  
+      debugger
+        camare.position.set(15, 40, -100);
+        controls.target.set(15,40,0);
+        controls.update();
+        camera.style.display = 'block';
+        side.style.display = 'none';
+        originalPosition.style.display = 'none';
+        btn.style.backgroundColor = '#87bdff';
+        btn2.style.backgroundColor = '#111111'
+        btn3.style.backgroundColor = '#111111'
+    }  
+    //侧边
+    var btn2 = document.getElementById("btn2");  
+    btn2.onclick =function(){  
+        camare.position.set(-150, 13, -10);
+        controls.target.set(0,3,-10);
+        controls.update();
+        camera.style.display = 'none';
+        side.style.display = 'block';
+        originalPosition.style.display = 'none';
+        btn.style.backgroundColor = '#111111';
+        btn2.style.backgroundColor = '#87bdff'
+        btn3.style.backgroundColor = '#111111'
+    }
+    //原位
+    var btn3 = document.getElementById("btn3");  
+    btn3.onclick =function(){   
+        camare.position.set(0, 50, 300);
+        controls.target.set(0,0,0);
+        controls.update();
+        camera.style.display = 'none';
+        side.style.display = 'none';
+        originalPosition.style.display = 'block';
+        btn.style.backgroundColor = '#111111';
+        btn2.style.backgroundColor = '#111111'
+        btn3.style.backgroundColor = '#87bdff'
+    }
+    /*
+    btn.onclick =function(){  
+      debugger
+      //translateCamera(new THREE.Vector3(15, 40, -100));
+      var x = 15;
+      var y = 40;
+      var z = -100;
+
+      var x2 = 15;
+      var y2 = 40;
+      var z2= 0;
+
+      var pos = new THREE.Vector3(x, y, z);
+      var pos2 = new THREE.Vector3(x2, y2, z2);
+
+      animateCamera(camare.position, pos, controls.target, pos2)
+    }  
+
+  //定义相机移动函数
+  let timeLine = gsap.timeline();
+  function translateCamera(position, camaretarget) {
+    timeLine.to(camare.position, {
+      x: position.x,
+      y: position.y,
+      z: position.z,
+      duration: 1,
+      ease: "power2.inOut",
+    });
+    timeLine.to(controls.target, {
+      x: camaretarget.x,
+      y: camaretarget.y,
+      z: camaretarget.z,
+      duration: 1,
+      ease: "power2.inOut",
+    })
+    //controls.target.set(15,40,0);
+    controls.update();
+  }
+
+  function animateCamera(current1, current2, target1, target2) {
+	var tween = new TWEEN.Tween({
+		x1: current1.x, // 相机当前位置x
+		y1: current1.y, // 相机当前位置y
+		z1: current1.z, // 相机当前位置z
+		x2: current2.x, // 控制当前的中心点x
+		y2: current2.y, // 控制当前的中心点y
+		z2: current2.z // 控制当前的中心点z
+	});
+	tween.to({
+		x1: target1.x, // 新的相机位置x
+		y1: target1.y, // 新的相机位置y
+		z1: target1.z, // 新的相机位置z
+		x2: target2.x, // 新的控制中心点位置x
+		y2: target2.y, // 新的控制中心点位置x
+		z2: target2.z // 新的控制中心点位置x
+	}, 1000);
+	tween.onUpdate(function() {
+		camare.position.x = this.x1;
+		camare.position.y = this.y1;
+		camare.position.z = this.z1;
+		controls.target.x = this.x2;
+		controls.target.y = this.y2;
+		controls.target.z = this.z2;
+		controls.update();
+	})
+	tween.easing(TWEEN.Easing.Cubic.InOut);
+	tween.start();
+}  */
+  
+  </script>
+</body>
+
+
+
+
+</html>
